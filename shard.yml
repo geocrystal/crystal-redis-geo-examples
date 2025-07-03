@@ -3,6 +3,7 @@ version: 0.1.0
 
 dependencies:
   redis:
-    github: stefanwille/crystal-redis
+    github: jgaskins/redis
+    branch: master
 
 license: MIT
