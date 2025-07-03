@@ -1,10 +1,16 @@
 require "redis"
 
-redis = Redis.new
+module Redis::Commands::Geo
+  def geohash(key : String, *members : String)
+    run({"geohash", key, *members})
+  end
+end
+
+redis = Redis::Client.new
 
 # Adds geospatial items (longitude, latitude, name) to the specified key.
-redis.geoadd("buses", -74.0002041, 40.7178486, "Bus A")
-redis.geoadd("buses", -73.9947324, 40.7258577, "Bus B")
+redis.geoadd("buses", "-74.0002041", "40.7178486", "Bus A")
+redis.geoadd("buses", "-73.9947324", "40.7258577", "Bus B")
 
 # Returns all entries in an index
 p! redis.zrange("buses", 0, -1)
@@ -21,26 +27,20 @@ p! redis.geohash("buses", "Bus B")
 #
 # You can specify the required units of measurement by passing the fourth argument to the command,
 # for example:
-# - `km` for kilometers
-# - `m` for meters
-# - `mi` for miles
-# - `ft` for feet
-p! redis.geodist("buses", "Bus A", "Bus B", "m")
+# - `:km` for kilometers
+# - `:m` for meters
+# - `:mi` for miles
+# - `:ft` for feet
+p! redis.geodist("buses", "Bus A", "Bus B", :m)
 
-# To search the index, the GEORADIUS and GEORADIUSBYMEMBER (for Redis versions less than 6.2)
-# or GEOSEARCH (for versions older than 6.2) commands are also used.
-
-p! redis.georadiusbymember("buses", "Bus A", 1, "mi")
-p! redis.georadius("buses", -74.0002041, 40.7178486, 2, "km")
-
-p! redis.geosearch("buses", "Bus A", 1, "mi")
-p! redis.geosearch("buses", Redis::GeoCoordinate.new(-74.0002041, 40.7178486), 2, "km")
+p! redis.geosearch("buses", frommember: "Bus A", byradius: Redis::Geo::Radius.new(1000, :m))
+p! redis.geosearch("buses", fromlonlat: {"-74.0002041", "40.7178486"}, byradius: Redis::Geo::Radius.new(2, :km))
 
 # Also search accept the parameters WITHDIST (display results + distance from the specified point/record)
 # and WITHCOORD (display results + record coordinates),
 # as well as the ASC or DESC sort option (sort by distance from the point):
-p! redis.geosearch("buses", Redis::GeoCoordinate.new(-74.0002041, 40.7178486), 2, "km", withdist: true)
-p! redis.geosearch("buses", Redis::GeoCoordinate.new(-74.0002041, 40.7178486), 2000, "m", withcoord: true, withdist: true, sort: "asc")
+p! redis.geosearch("buses", fromlonlat: {"-74.0002041", "40.7178486"}, byradius: Redis::Geo::Radius.new(2, :km), withdist: true)
+p! redis.geosearch("buses", fromlonlat: {"-74.0002041", "40.7178486"}, byradius: Redis::Geo::Radius.new(2000, :m), withdist: true, sort: :asc)
 
 redis.zrem("buses", "Bus A")
 redis.zrem("buses", "Bus B")
